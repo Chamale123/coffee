@@ -1,0 +1,73 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "A user of the coffee app.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "role": { "type": "string", "enum": ["student", "admin"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role", "createdAt"]
+    },
+    "Machine": {
+      "title": "Machine",
+      "description": "A smart coffee machine.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "status": { "type": "string", "enum": ["Available", "Busy"] },
+        "location": { "type": "string" }
+      },
+      "required": ["id", "name", "status"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "A coffee order.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "machineId": { "type": "string" },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "price": { "type": "number" },
+              "quantity": { "type": "integer" }
+            }
+          }
+        },
+        "totalPrice": { "type": "number" },
+        "pickupTime": { "type": "string" },
+        "status": { "type": "string", "enum": ["Preparing", "Ready", "Completed"] },
+        "paymentStatus": { "type": "string", "enum": ["Pending", "Paid", "Failed"] },
+        "paymentMethod": { "type": "string", "enum": ["Wave", "Cash"] },
+        "orderNumber": { "type": "string" },
+        "dispenseCode": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "machineId", "items", "totalPrice", "status", "paymentStatus", "paymentMethod", "orderNumber", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles."
+    },
+    "/machines/{machineId}": {
+      "schema": "Machine",
+      "description": "Coffee machines."
+    },
+    "/orders/{orderId}": {
+      "schema": "Order",
+      "description": "Coffee orders."
+    }
+  }
+}

@@ -1,0 +1,24 @@
+@import "tailwindcss";
+
+@theme {
+  --color-coffee-brown: #3E2723;
+  --color-coffee-gold: #C8A27C;
+  --color-coffee-cream: #FFF3E0;
+  --color-coffee-accent: #FF6F00;
+  
+  --background-image-coffee-gradient: linear-gradient(135deg, #3E2723 0%, #C8A27C 50%, #FFF3E0 100%);
+}
+
+@layer base {
+  body {
+    @apply bg-coffee-cream text-coffee-brown font-sans;
+  }
+}
+
+.glass {
+  @apply bg-white/10 backdrop-blur-md border border-white/20 shadow-xl;
+}
+
+.coffee-card {
+  @apply rounded-3xl p-6 shadow-lg transition-all duration-300 hover:shadow-2xl hover:-translate-y-1;
+}

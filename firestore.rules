@@ -1,0 +1,119 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: userId (uid)
+    // Fields:
+    //   - uid: string (required)
+    //   - email: string (required, email format)
+    //   - displayName: string (optional)
+    //   - role: string (required, enum: ['student', 'admin'])
+    //   - createdAt: timestamp (required)
+    //
+    // Collection: machines
+    // Document ID: machineId
+    // Fields:
+    //   - id: string (required)
+    //   - name: string (required)
+    //   - status: string (required, enum: ['Available', 'Busy'])
+    //   - location: string (required)
+    //
+    // Collection: orders
+    // Document ID: orderId
+    // Fields:
+    //   - id: string (required)
+    //   - userId: string (required)
+    //   - machineId: string (required)
+    //   - items: list (required, max 10 items)
+    //   - totalPrice: number (required, positive)
+    //   - status: string (required, enum: ['Preparing', 'Ready', 'Completed'])
+    //   - paymentStatus: string (required, enum: ['Pending', 'Paid', 'Failed'])
+    //   - paymentMethod: string (required, enum: ['Wave', 'Cash'])
+    //   - orderNumber: string (required)
+    //   - createdAt: timestamp (required)
+    //
+    // ===============================================================
+
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    function isAdmin() {
+      return isAuthenticated() && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         (request.auth.token.email == "chamlamin693@gmail.com" && request.auth.token.email_verified == true));
+    }
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    // Domain Validators
+    function isValidUser(data) {
+      return hasRequiredFields(['uid', 'email', 'role', 'createdAt']) &&
+             hasOnlyAllowedFields(['uid', 'email', 'displayName', 'role', 'createdAt']) &&
+             data.uid == request.auth.uid &&
+             isValidEmail(data.email) &&
+             data.role in ['student', 'admin'] &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidMachine(data) {
+      return hasRequiredFields(['id', 'name', 'status', 'location']) &&
+             hasOnlyAllowedFields(['id', 'name', 'status', 'location']) &&
+             data.status in ['Available', 'Busy'];
+    }
+
+    function isValidOrder(data) {
+      return hasRequiredFields(['id', 'userId', 'machineId', 'items', 'totalPrice', 'status', 'paymentStatus', 'paymentMethod', 'orderNumber', 'createdAt']) &&
+             hasOnlyAllowedFields(['id', 'userId', 'machineId', 'items', 'totalPrice', 'pickupTime', 'status', 'paymentStatus', 'paymentMethod', 'orderNumber', 'dispenseCode', 'createdAt']) &&
+             data.userId == request.auth.uid &&
+             data.items is list && data.items.size() <= 10 &&
+             data.totalPrice is number && data.totalPrice >= 0 &&
+             data.status in ['Preparing', 'Ready', 'Completed'] &&
+             data.paymentStatus in ['Pending', 'Paid', 'Failed'] &&
+             data.paymentMethod in ['Wave', 'Cash'] &&
+             data.createdAt is timestamp;
+    }
+
+    // User Profiles
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.role == 'student';
+      allow update: if isAuthenticated() && (
+        (isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.role == resource.data.role) || 
+        isAdmin()
+      );
+    }
+
+    // Coffee Machines
+    match /machines/{machineId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAdmin() && isValidMachine(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    // Orders
+    match /orders/{orderId} {
+      allow read: if isAuthenticated() && (request.auth.uid == resource.data.userId || isAdmin());
+      allow create: if isAuthenticated() && isValidOrder(request.resource.data);
+      allow update: if isAuthenticated() && (
+        (request.auth.uid == resource.data.userId && isValidOrder(request.resource.data) && request.resource.data.userId == resource.data.userId) || 
+        isAdmin()
+      );
+      allow delete: if isAdmin();
+    }
+  }
+}
